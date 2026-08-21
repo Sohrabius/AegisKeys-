@@ -37,3 +37,27 @@ python -m http.server 8000
 
 # Or use Node.js (npx serve):
 npx serve .
+```
+
+Then open http://localhost:8000 in your browser.
+Option B: Direct File
+Simply double-click index.html to open it in your browser. (Note: Clipboard auto-clear and some crypto features may be restricted by browser security policies when using the file:// protocol).
+2. Create Your Vault
+Enter a strong Master Password (minimum 6 characters, 12+ recommended).
+Click Create New Vault.
+CRITICAL: Click the 💾 icon in the sidebar to download your api-vault.json file. If you lose this file and forget your password, your data is gone forever.
+🛠️ Usage Guide
+Adding an API Key
+Click + New API in the left sidebar.
+Fill in the details:
+Name: e.g., "OpenAI Production"
+Base URL: e.g., https://api.openai.com/v1
+API Token: Your secret key.
+(Optional) Provider, Model, Tags, and Notes.
+Click 💾 Save.
+Click the 💾 Export icon in the sidebar to update your JSON file.
+Using a Key
+Click on an API entry in the sidebar.
+Click Copy next to the token. It is now in your clipboard (and will auto-clear in 30s).
+Click 📋 Copy cURL to get a ready-to-use curl command for testing.
+Click 🧪 Test to ping the API and verify the key is valid.
