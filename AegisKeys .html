@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AI API Token Vault</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e6e8ee;
+    --muted: #8a93a6;
+    --accent: #6ee7b7;
+    --accent-2: #60a5fa;
+    --danger: #f87171;
+    --warn: #fbbf24;
+    --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  button { font-family: inherit; }
+  input, textarea, select { font-family: inherit; }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+  .sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
+  .main { display: flex; flex-direction: column; min-width: 0; }
+
+  /* Header */
+  .header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .header .title { font-weight: 700; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  .header .title .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .header .spacer { flex: 1; }
+  .btn { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all .15s; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: linear-gradient(135deg, #10b981, #059669); border-color: transparent; color: #04130b; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.1); color: #04130b; }
+  .btn.danger { color: var(--danger); }
+  .btn.danger:hover { border-color: var(--danger); background: rgba(248,113,113,.08); }
+  .btn.ghost { background: transparent; }
+  .btn.icon { padding: 6px 8px; }
+
+  /* Sidebar */
+  .side-top { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .search { position: relative; }
+  .search input { width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px 9px 34px; border-radius: 8px; outline: none; font-size: 13px; }
+  .search input:focus { border-color: var(--accent); }
+  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: .6; }
+  .list { flex: 1; overflow-y: auto; padding: 6px; }
+  .item { padding: 10px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; border: 1px solid transparent; }
+  .item:hover { background: var(--panel-2); }
+  .item.active { background: var(--panel-2); border-color: var(--border); }
+  .item .logo { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: #04130b; font-size: 14px; flex-shrink: 0; }
+  .item .meta { flex: 1; min-width: 0; }
+  .item .name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .badge { font-size: 10px; padding: 2px 6px; border-radius: 999px; background: rgba(110,231,183,.12); color: var(--accent); border: 1px solid rgba(110,231,183,.3); }
+  .item .badge.disabled { background: rgba(248,113,113,.1); color: var(--danger); border-color: rgba(248,113,113,.3); }
+  .empty { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* Main */
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 14px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .field input, .field textarea, .field select {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 12px; border-radius: 8px; outline: none; font-size: 13.5px; width: 100%;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+  .field textarea { min-height: 70px; resize: vertical; font-family: var(--mono); font-size: 12.5px; }
+  .field .hint { font-size: 11.5px; color: var(--muted); }
+
+  .token-row { display: flex; gap: 8px; align-items: stretch; }
+  .token-row input { font-family: var(--mono); letter-spacing: .5px; }
+  .token-row .btn { white-space: nowrap; }
+
+  .tags-input { display: flex; flex-wrap: wrap; gap: 6px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px; min-height: 40px; align-items: center; }
+  .tags-input:focus-within { border-color: var(--accent); }
+  .tag { background: rgba(96,165,250,.12); color: var(--accent-2); border: 1px solid rgba(96,165,250,.3); padding: 3px 8px; border-radius: 999px; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .tag button { background: none; border: 0; color: inherit; cursor: pointer; padding: 0; font-size: 14px; line-height: 1; opacity: .7; }
+  .tag button:hover { opacity: 1; }
+  .tags-input input { background: transparent; border: 0; outline: 0; color: var(--text); flex: 1; min-width: 80px; padding: 4px; font-size: 13px; }
+
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+  /* View card */
+  .view-head { display: flex; align-items: center; gap: 14px; }
+  .view-head .logo { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #04130b; }
+  .view-head .info h2 { margin: 0; font-size: 18px; }
+  .view-head .info .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px 14px; font-size: 13px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-family: var(--mono); word-break: break-all; }
+  .kv .v.mono-plain { font-family: inherit; }
+
+  .usage-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 240px; overflow: auto; position: relative; }
+  .usage-box .copy-corner { position: absolute; top: 8px; right: 8px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 1000; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  .toast.ok { border-color: var(--accent); color: var(--accent); }
+  .toast.err { border-color: var(--danger); color: var(--danger); }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(4px); }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 420px; max-width: 92vw; }
+  .modal h3 { margin: 0 0 6px; }
+  .modal p { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .modal .field { margin-bottom: 12px; }
+
+  /* Locked screen */
+  .lock-screen { position: fixed; inset: 0; background: radial-gradient(circle at top, #1a1f2b, #0b0d12); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+  .lock-box { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 380px; text-align: center; }
+  .lock-box .shield { font-size: 40px; margin-bottom: 10px; }
+  .lock-box h2 { margin: 0 0 6px; }
+  .lock-box p { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row.wrap { flex-wrap: wrap; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2f3a; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a4150; }
+
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { max-height: 40vh; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="shield">🔐</div>
+    <h2 id="lockTitle">Unlock Vault</h2>
+    <p id="lockSubtitle">Enter your master password to decrypt the API keys.</p>
+    <div class="field" style="text-align:left">
+      <label>Master Password</label>
+      <input type="password" id="masterPwd" placeholder="••••••••" autocomplete="off" />
+      <div class="hint" id="lockHint">The password is never stored — it only decrypts your local JSON file.</div>
+    </div>
+    <div class="row" style="justify-content:flex-end; margin-top: 14px;">
+      <button class="btn" id="btnNewVault">Create New Vault</button>
+      <button class="btn primary" id="btnUnlock">Unlock</button>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn ghost" id="btnLoadFile" style="font-size:12px;">📂 Load encrypted JSON file…</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="app" style="display:none;">
+  <aside class="sidebar">
+    <div class="header">
+      <div class="title"><span class="dot"></span> API Vault</div>
+      <div class="spacer"></div>
+      <button class="btn icon" id="btnLock" title="Lock">🔒</button>
+    </div>
+    <div class="side-top">
+      <button class="btn primary" id="btnNew">+ New API</button>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="searchInput" placeholder="Search name, url, tag…" />
+      </div>
+      <div class="row" style="justify-content:space-between;">
+        <span style="font-size:11.5px;color:var(--muted)" id="countLabel">0 entries</span>
+        <div class="row">
+          <button class="btn ghost icon" id="btnExport" title="Export encrypted JSON">💾</button>
+          <button class="btn ghost icon" id="btnImport" title="Import encrypted JSON">📥</button>
+        </div>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="title" id="mainTitle">Select an API</div>
+      <div class="spacer"></div>
+      <button class="btn" id="btnTest" style="display:none;">🧪 Test</button>
+      <button class="btn" id="btnEdit" style="display:none;">✏️ Edit</button>
+      <button class="btn danger" id="btnDelete" style="display:none;">🗑 Delete</button>
+    </div>
+    <div class="content" id="content">
+      <div class="card">
+        <h3>Welcome 👋</h3>
+        <p style="color:var(--muted); font-size:13.5px; line-height:1.6;">
+          This vault stores your AI API credentials in an <b>encrypted</b> JSON file (AES-GCM, PBKDF2).
+          Your master password is never saved — it only lives in memory while unlocked.
+        </p>
+        <ul style="color:var(--muted); font-size:13px; line-height:1.8;">
+          <li>Click <b>+ New API</b> to add a provider.</li>
+          <li>Click an entry to view, copy, or test it.</li>
+          <li>Use <b>💾 Export</b> to save the encrypted file alongside this HTML.</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: confirm delete -->
+<div class="modal-bg" id="modalDelete">
+  <div class="modal">
+    <h3>Delete this API?</h3>
+    <p>This action cannot be undone. The entry will be removed from the vault.</p>
+    <div class="row" style="justify-content:flex-end;">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn danger" id="confirmDelete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" accept=".json,application/json" style="display:none" />
+
+<script>
+/* ============================================================
+   AI API TOKEN VAULT
+   - Encrypted JSON file (AES-GCM + PBKDF2)
+   - Master password never stored
+   - Clipboard auto-clear after copy
+   ============================================================ */
+
+const LS_KEY = 'aivault:lastfile'; // only remembers filename, not content
+let vault = { entries: [] };       // decrypted in-memory
+let currentId = null;
+let editingId = null;
+let masterKey = null;              // CryptoKey
+let currentSalt = null;            // Uint8Array
+let autoLockTimer = null;
+const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 min
+
+/* ---------- Crypto helpers ---------- */
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+async function deriveKey(password, salt) {
+  const baseKey = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptJSON(obj, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const data = enc.encode(JSON.stringify(obj));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+  return {
+    v: 1,
+    salt: b64(salt),
+    iv: b64(iv),
+    ct: b64(new Uint8Array(ct))
+  };
+}
+
+async function decryptJSON(payload, password) {
+  const salt = b64d(payload.salt);
+  const iv = b64d(payload.iv);
+  const ct = b64d(payload.ct);
+  const key = await deriveKey(password, salt);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return JSON.parse(dec.decode(pt));
+}
+
+function b64(u8) { return btoa(String.fromCharCode(...u8)); }
+function b64d(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+
+/* ---------- Utilities ---------- */
+function uid() { return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+function nowISO() { return new Date().toISOString(); }
+function escapeHTML(s) { return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function maskToken(t) {
+  if (!t) return '';
+  if (t.length <= 10) return '•'.repeat(t.length);
+  return t.slice(0, 5) + '•'.repeat(Math.max(8, t.length - 10)) + t.slice(-4);
+}
+function providerColor(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('openai')) return '#10a37f';
+  if (n.includes('anthropic') || n.includes('claude')) return '#d97757';
+  if (n.includes('google') || n.includes('gemini')) return '#4285f4';
+  if (n.includes('mistral')) return '#fa520f';
+  if (n.includes('groq')) return '#f55036';
+  if (n.includes('deepseek')) return '#5b6efc';
+  if (n.includes('together')) return '#0f6fff';
+  if (n.includes('ollama') || n.includes('local')) return '#6b7280';
+  const colors = ['#6ee7b7','#60a5fa','#f472b6','#fbbf24','#a78bfa','#34d399'];
+  let h = 0; for (const c of name || '') h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return colors[h % colors.length];
+}
+function initials(name) {
+  return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+}
+
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.className = 'toast ' + type, 2200);
+}
+
+/* ---------- File I/O ---------- */
+async function saveToFile() {
+  if (!masterKey) return;
+  // We need the password to re-encrypt. Since we don't store it,
+  // we prompt the user (or use the in-memory key only if they haven't locked).
+  // Better UX: keep password in memory only while unlocked.
+  const pwd = sessionStorage.getItem('__vault_pwd__');
+  if (!pwd) { toast('Password expired. Please lock and unlock again.', 'err'); return; }
+  const payload = await encryptJSON(vault, pwd);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'api-vault.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('Encrypted vault saved', 'ok');
+}
+
+function loadFromFile() {
+  document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const payload = JSON.parse(text);
+    if (!payload.ct || !payload.iv || !payload.salt) throw new Error('Invalid file');
+    sessionStorage.setItem('__vault_payload__', text);
+    currentSalt = b64d(payload.salt);
+    
+    // Update UI to show file loaded
+    document.getElementById('lockTitle').textContent = '✓ Vault File Loaded';
+    document.getElementById('lockSubtitle').textContent = 
+      `Loaded "${file.name}". Now enter your master password to unlock.`;
+    document.getElementById('btnNewVault').style.display = 'none';
+    document.getElementById('btnLoadFile').textContent = '📂 Load different file…';
+    
+    // Auto-focus password field
+    document.getElementById('masterPwd').focus();
+    toast('✓ File loaded. Enter password to unlock.', 'ok');
+  } catch (err) {
+    toast('❌ Not a valid vault file', 'err');
+  }
+  e.target.value = '';
+});
+
+/* ---------- Lock / Unlock ---------- */
+document.getElementById('btnUnlock').addEventListener('click', tryUnlock);
+document.getElementById('masterPwd').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+document.getElementById('btnNewVault').addEventListener('click', async () => {
+  const pwd = document.getElementById('masterPwd').value;
+  if (pwd.length < 6) { 
+    toast('Password must be at least 6 characters', 'err'); 
+    return; 
+  }
+  
+  // Confirm if vault already exists in memory
+  if (vault.entries && vault.entries.length > 0) {
+    if (!confirm('You have unsaved changes. Creating a new vault will discard them. Continue?')) {
+      return;
+    }
+  }
+  
+  vault = { entries: [] };
+  sessionStorage.setItem('__vault_pwd__', pwd);
+  masterKey = true;
+  enterApp();
+  
+  // Auto-prompt to save
+  setTimeout(() => {
+    toast('New vault created! Click 💾 to save it.', 'ok');
+  }, 500);
+});
+
+
+document.getElementById('btnLoadFile').addEventListener('click', loadFromFile);
+
+async function tryUnlock() {
+  const pwd = document.getElementById('masterPwd').value;
+  if (!pwd) { 
+    toast('Enter your master password', 'err'); 
+    return; 
+  }
+  
+  const raw = sessionStorage.getItem('__vault_payload__');
+  
+  if (!raw) {
+    // No file loaded - guide user
+    const choice = confirm(
+      'No vault file loaded yet.\n\n' +
+      '• Click "OK" to create a new vault\n' +
+      '• Click "Cancel" to load an existing file first'
+    );
+    
+    if (choice) {
+      // User wants to create new
+      document.getElementById('btnNewVault').click();
+    } else {
+      // User wants to load file
+      document.getElementById('btnLoadFile').click();
+    }
+    return;
+  }
+  
+  try {
+    const payload = JSON.parse(raw);
+    vault = await decryptJSON(payload, pwd);
+    if (!vault.entries) vault.entries = [];
+    sessionStorage.setItem('__vault_pwd__', pwd);
+    masterKey = true;
+    enterApp();
+    toast('✓ Vault unlocked successfully', 'ok');
+  } catch (err) {
+    toast('❌ Wrong password or corrupted file', 'err');
+    document.getElementById('masterPwd').value = '';
+    document.getElementById('masterPwd').focus();
+  }
+}
+
+function enterApp() {
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  renderList();
+  resetAutoLock();
+}
+
+document.getElementById('btnLock').addEventListener('click', lockVault);
+function lockVault() {
+  sessionStorage.removeItem('__vault_pwd__');
+  sessionStorage.removeItem('__vault_payload__');
+  masterKey = null;
+  vault = { entries: [] };
+  currentId = null;
+  editingId = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('masterPwd').value = '';
+  document.getElementById('btnNewVault').style.display = '';
+  document.getElementById('lockTitle').textContent = 'Vault Locked';
+  document.getElementById('lockSubtitle').textContent = 'Load a vault file or create a new one.';
+  toast('Locked');
+}
+
+function resetAutoLock() {
+  clearTimeout(autoLockTimer);
+  autoLockTimer = setTimeout(() => {
+    if (masterKey) { toast('Auto-locked due to inactivity'); lockVault(); }
+  }, AUTO_LOCK_MS);
+}
+['mousemove','keydown','click'].forEach(ev => document.addEventListener(ev, () => { if (masterKey) resetAutoLock(); }));
+
+/* ---------- Render list ---------- */
+function renderList() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  const list = document.getElementById('list');
+  const filtered = vault.entries.filter(e => {
+    if (!q) return true;
+    return (e.name + ' ' + e.baseUrl + ' ' + (e.tags || []).join(' ') + ' ' + (e.provider || '')).toLowerCase().includes(q);
+  });
+  document.getElementById('countLabel').textContent = `${vault.entries.length} entr${vault.entries.length === 1 ? 'y' : 'ies'}`;
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty">${vault.entries.length ? 'No matches' : 'No entries yet — click "+ New API"'}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(e => `
+    <div class="item ${e.id === currentId ? 'active' : ''}" data-id="${e.id}">
+      <div class="logo" style="background:${providerColor(e.name)}">${escapeHTML(initials(e.name))}</div>
+      <div class="meta">
+        <div class="name">${escapeHTML(e.name)}</div>
+        <div class="sub">${escapeHTML(e.provider || '')}${e.model ? ' · ' + escapeHTML(e.model) : ''}</div>
+      </div>
+      <span class="badge ${e.disabled ? 'disabled' : ''}">${e.disabled ? 'off' : 'active'}</span>
+    </div>
+  `).join('');
+  list.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('click', () => { currentId = el.dataset.id; editingId = null; renderList(); renderMain(); });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', renderList);
+
+/* ---------- Render main ---------- */
+function renderMain() {
+  const title = document.getElementById('mainTitle');
+  const content = document.getElementById('content');
+  const btnEdit = document.getElementById('btnEdit');
+  const btnDelete = document.getElementById('btnDelete');
+  const btnTest = document.getElementById('btnTest');
+
+  if (editingId) {
+    const e = vault.entries.find(x => x.id === editingId) || newEntry();
+    title.textContent = editingId === '__new__' ? 'New API' : 'Edit API';
+    btnEdit.style.display = 'none';
+    btnDelete.style.display = 'none';
+    btnTest.style.display = 'none';
+    content.innerHTML = renderForm(e);
+    attachFormHandlers();
+    return;
+  }
+
+  if (!currentId) {
+    title.textContent = 'Select an API';
+    btnEdit.style.display = 'none';
+    btnDelete.style.display = 'none';
+    btnTest.style.display = 'none';
+    content.innerHTML = `<div class="card"><h3>Welcome 👋</h3><p style="color:var(--muted)">Pick an entry from the sidebar or create a new one.</p></div>`;
+    return;
+  }
+  const e = vault.entries.find(x => x.id === currentId);
+  if (!e) { currentId = null; renderMain(); return; }
+
+  title.textContent = e.name;
+  btnEdit.style.display = '';
+  btnDelete.style.display = '';
+  btnTest.style.display = e.baseUrl ? '' : 'none';
+
+  const masked = maskToken(e.token);
+  const curl = buildCurl(e);
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="view-head">
+        <div class="logo" style="background:${providerColor(e.name)}">${escapeHTML(initials(e.name))}</div>
+        <div class="info">
+          <h2>${escapeHTML(e.name)}</h2>
+          <div class="sub">${escapeHTML(e.provider || 'Custom provider')}${e.model ? ' · ' + escapeHTML(e.model) : ''}</div>
+        </div>
+        <div style="margin-left:auto;">
+          <span class="badge ${e.disabled ? 'disabled' : ''}" style="font-size:11px;padding:4px 10px;">${e.disabled ? 'Disabled' : 'Active'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🔑 Credentials</h3>
+      <div class="kv">
+        <div class="k">Base URL</div>
+        <div class="v mono-plain">${escapeHTML(e.baseUrl || '—')}</div>
+
+        <div class="k">API Token</div>
+        <div class="v">
+          <div class="token-row">
+            <input type="password" id="viewToken" value="${escapeHTML(e.token)}" readonly style="flex:1" />
+            <button class="btn" id="btnReveal">Show</button>
+            <button class="btn" id="btnCopyToken">Copy</button>
+          </div>
+          <div class="hint">Masked: <code>${escapeHTML(masked)}</code></div>
+        </div>
+
+        <div class="k">Model</div>
+        <div class="v mono-plain">${escapeHTML(e.model || '—')}</div>
+
+        <div class="k">Auth Header</div>
+        <div class="v mono-plain">${escapeHTML(e.authHeader || 'Authorization: Bearer <token>')}</div>
+      </div>
+    </div>
+
+    ${e.tags && e.tags.length ? `
+    <div class="card">
+      <h3>🏷 Tags</h3>
+      <div class="row wrap">
+        ${e.tags.map(t => `<span class="tag">${escapeHTML(t)}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${e.notes ? `
+    <div class="card">
+      <h3>📝 Notes</h3>
+      <div style="color:var(--muted); font-size:13px; white-space:pre-wrap;">${escapeHTML(e.notes)}</div>
+    </div>` : ''}
+
+    <div class="card">
+      <h3>⚡ Quick Use</h3>
+      <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <button class="btn" id="btnCopyCurl">📋 Copy cURL</button>
+        <button class="btn" id="btnCopyHeader">📋 Copy Auth Header</button>
+        <button class="btn" id="btnCopyToken2">📋 Copy Token</button>
+      </div>
+      <div class="usage-box" id="curlBox"><button class="btn copy-corner" id="btnCopyCurl2">Copy</button>${escapeHTML(curl)}</div>
+    </div>
+
+    <div class="card">
+      <h3>📊 Stats</h3>
+      <div class="kv">
+        <div class="k">Created</div><div class="v mono-plain">${escapeHTML(fmtDate(e.createdAt))}</div>
+        <div class="k">Last used</div><div class="v mono-plain">${escapeHTML(fmtDate(e.lastUsedAt))}</div>
+        <div class="k">Times copied</div><div class="v mono-plain">${e.copyCount || 0}</div>
+      </div>
+    </div>
+  `;
+
+  // Wire view buttons
+  const viewToken = document.getElementById('viewToken');
+  document.getElementById('btnReveal').addEventListener('click', (ev) => {
+    const btn = ev.currentTarget;
+    if (viewToken.type === 'password') { viewToken.type = 'text'; btn.textContent = 'Hide'; scheduleHide(viewToken, btn); }
+    else { viewToken.type = 'password'; btn.textContent = 'Show'; }
+  });
+  document.getElementById('btnCopyToken').addEventListener('click', () => copyToken(e));
+  document.getElementById('btnCopyToken2').addEventListener('click', () => copyToken(e));
+  document.getElementById('btnCopyCurl').addEventListener('click', () => copyText(curl));
+  document.getElementById('btnCopyCurl2').addEventListener('click', () => copyText(curl));
+  document.getElementById('btnCopyHeader').addEventListener('click', () => {
+    const h = (e.authHeader || 'Authorization: Bearer <token>').replace('<token>', e.token);
+    copyText(h);
+  });
+}
+
+function scheduleHide(input, btn) {
+  clearTimeout(scheduleHide._t);
+  scheduleHide._t = setTimeout(() => { input.type = 'password'; btn.textContent = 'Show'; }, 12000);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString();
+}
+
+function buildCurl(e) {
+  if (!e.baseUrl) return '# No base URL configured';
+  const auth = (e.authHeader || 'Authorization: Bearer <token>').replace('<token>', e.token);
+  const url = e.baseUrl.replace(/\/$/, '') + (e.model ? '' : '');
+  let body = '';
+  if (e.model) {
+    body = ` \\\n  -d '{"model":"${e.model}","messages":[{"role":"user","content":"Hello"}]}'`;
+  }
+  return `curl "${url}" \\\n  -H "${auth}" \\\n  -H "Content-Type: application/json"${body}`;
+}
+
+/* ---------- Form ---------- */
+function newEntry() {
+  return {
+    id: '__new__',
+    name: '',
+    provider: '',
+    baseUrl: '',
+    token: '',
+    model: '',
+    authHeader: 'Authorization: Bearer <token>',
+    tags: [],
+    notes: '',
+    disabled: false,
+    createdAt: nowISO(),
+    lastUsedAt: null,
+    copyCount: 0
+  };
+}
+
+function renderForm(e) {
+  return `
+    <div class="card">
+      <h3>🧩 Details</h3>
+      <div class="grid-2">
+        <div class="field">
+          <label>Name *</label>
+          <input type="text" id="f_name" value="${escapeHTML(e.name)}" placeholder="e.g. OpenAI Production" />
+        </div>
+        <div class="field">
+          <label>Provider</label>
+          <input type="text" id="f_provider" value="${escapeHTML(e.provider)}" placeholder="OpenAI, Anthropic, Ollama…" list="providers" />
+          <datalist id="providers">
+            <option>OpenAI</option><option>Anthropic</option><option>Google</option>
+            <option>Mistral</option><option>Groq</option><option>DeepSeek</option>
+            <option>Together</option><option>Ollama</option><option>Custom</option>
+          </datalist>
+        </div>
+        <div class="field" style="grid-column: 1 / -1;">
+          <label>Base URL *</label>
+          <input type="url" id="f_baseUrl" value="${escapeHTML(e.baseUrl)}" placeholder="https://api.openai.com/v1" />
+          <div class="hint">Include the version path if required by the provider.</div>
+        </div>
+        <div class="field" style="grid-column: 1 / -1;">
+          <label>API Token *</label>
+          <div class="token-row">
+            <input type="password" id="f_token" value="${escapeHTML(e.token)}" placeholder="sk-…" />
+            <button class="btn" id="f_toggle">Show</button>
+            <button class="btn" id="f_gen">🎲 Generate placeholder</button>
+          </div>
+          <div class="hint">Stored encrypted. Never shared.</div>
+        </div>
+        <div class="field">
+          <label>Default Model</label>
+          <input type="text" id="f_model" value="${escapeHTML(e.model)}" placeholder="gpt-4o-mini" />
+        </div>
+        <div class="field">
+          <label>Auth Header Template</label>
+          <input type="text" id="f_authHeader" value="${escapeHTML(e.authHeader || 'Authorization: Bearer <token>')}" />
+          <div class="hint">Use <code>&lt;token&gt;</code> as placeholder.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🏷 Tags</h3>
+      <div class="tags-input" id="tagsInput">
+        ${(e.tags || []).map(t => `<span class="tag" data-tag="${escapeHTML(t)}">${escapeHTML(t)}<button data-rm>×</button></span>`).join('')}
+        <input type="text" id="tagField" placeholder="Add tag and press Enter…" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📝 Notes</h3>
+      <div class="field">
+        <textarea id="f_notes" placeholder="Rate limits, usage notes, who owns this key…">${escapeHTML(e.notes || '')}</textarea>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label class="row" style="gap:8px; cursor:pointer;">
+          <input type="checkbox" id="f_disabled" ${e.disabled ? 'checked' : ''} />
+          <span>Disabled (keep in vault but don't use)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" id="f_cancel">Cancel</button>
+      <button class="btn primary" id="f_save">💾 Save</button>
+    </div>
+  `;
+}
+
+function attachFormHandlers() {
+  const isNew = editingId === '__new__';
+  const existing = isNew ? newEntry() : vault.entries.find(x => x.id === editingId);
+  let tags = [...(existing.tags || [])];
+
+  const toggle = document.getElementById('f_toggle');
+  const tok = document.getElementById('f_token');
+  toggle.addEventListener('click', () => {
+    if (tok.type === 'password') { tok.type = 'text'; toggle.textContent = 'Hide'; }
+    else { tok.type = 'password'; toggle.textContent = 'Show'; }
+  });
+  document.getElementById('f_gen').addEventListener('click', () => {
+    tok.value = 'sk-' + Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 14);
+    tok.type = 'text'; toggle.textContent = 'Hide';
+  });
+
+  const tagsInput = document.getElementById('tagsInput');
+  const tagField = document.getElementById('tagField');
+  function renderTags() {
+    tagsInput.querySelectorAll('.tag').forEach(n => n.remove());
+    tags.forEach(t => {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.dataset.tag = t;
+      span.innerHTML = `${escapeHTML(t)}<button data-rm>×</button>`;
+      tagsInput.insertBefore(span, tagField);
+    });
+    tagsInput.querySelectorAll('[data-rm]').forEach(b => {
+      b.addEventListener('click', () => { tags = tags.filter(x => x !== b.parentElement.dataset.tag); renderTags(); });
+    });
+  }
+  renderTags();
+  tagField.addEventListener('keydown', (ev) => {
+    if ((ev.key === 'Enter' || ev.key === ',') && tagField.value.trim()) {
+      ev.preventDefault();
+      const v = tagField.value.trim().replace(/,/g, '');
+      if (v && !tags.includes(v)) { tags.push(v); renderTags(); }
+      tagField.value = '';
+    } else if (ev.key === 'Backspace' && !tagField.value && tags.length) {
+      tags.pop(); renderTags();
+    }
+  });
+
+  document.getElementById('f_cancel').addEventListener('click', () => {
+    editingId = null;
+    if (isNew) currentId = null;
+    renderList(); renderMain();
+  });
+
+  document.getElementById('f_save').addEventListener('click', () => {
+    const name = document.getElementById('f_name').value.trim();
+    const baseUrl = document.getElementById('f_baseUrl').value.trim();
+    const token = document.getElementById('f_token').value.trim();
+    if (!name) { toast('Name is required', 'err'); return; }
+    if (!baseUrl) { toast('Base URL is required', 'err'); return; }
+    if (!token) { toast('Token is required', 'err'); return; }
+
+    const data = {
+      id: isNew ? uid() : editingId,
+      name,
+      provider: document.getElementById('f_provider').value.trim(),
+      baseUrl,
+      token,
+      model: document.getElementById('f_model').value.trim(),
+      authHeader: document.getElementById('f_authHeader').value.trim() || 'Authorization: Bearer <token>',
+      tags,
+      notes: document.getElementById('f_notes').value,
+      disabled: document.getElementById('f_disabled').checked,
+      createdAt: existing.createdAt || nowISO(),
+      lastUsedAt: existing.lastUsedAt || null,
+      copyCount: existing.copyCount || 0
+    };
+
+    if (isNew) vault.entries.unshift(data);
+    else Object.assign(vault.entries.find(x => x.id === editingId), data);
+
+    currentId = data.id;
+    editingId = null;
+    renderList(); renderMain();
+    toast('Saved ✓', 'ok');
+  });
+}
+
+/* ---------- Actions ---------- */
+document.getElementById('btnNew').addEventListener('click', () => {
+  editingId = '__new__';
+  currentId = null;
+  renderList(); renderMain();
+});
+document.getElementById('btnEdit').addEventListener('click', () => {
+  if (!currentId) return;
+  editingId = currentId;
+  renderMain();
+});
+document.getElementById('btnDelete').addEventListener('click', () => {
+  document.getElementById('modalDelete').classList.add('show');
+});
+document.getElementById('modalDelete').querySelector('[data-close]').addEventListener('click', () => {
+  document.getElementById('modalDelete').classList.remove('show');
+});
+document.getElementById('confirmDelete').addEventListener('click', () => {
+  vault.entries = vault.entries.filter(e => e.id !== currentId);
+  currentId = null;
+  document.getElementById('modalDelete').classList.remove('show');
+  renderList(); renderMain();
+  toast('Deleted', 'ok');
+});
+
+document.getElementById('btnExport').addEventListener('click', saveToFile);
+document.getElementById('btnImport').addEventListener('click', loadFromFile);
+
+document.getElementById('btnTest').addEventListener('click', async () => {
+  const e = vault.entries.find(x => x.id === currentId);
+  if (!e) return;
+  toast('Testing…');
+  try {
+    const auth = (e.authHeader || 'Authorization: Bearer <token>').replace('<token>', e.token);
+    const [hName, ...hRest] = auth.split(':');
+    const headers = { [hName.trim()]: hRest.join(':').trim() };
+    let url = e.baseUrl.replace(/\/$/, '');
+    let opts = { method: 'GET', headers };
+    if (e.model) {
+      url += '/chat/completions';
+      opts.method = 'POST';
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify({ model: e.model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 });
+    } else {
+      url += '/models';
+    }
+    const res = await fetch(url, opts);
+    if (res.ok) toast('✓ Connection OK (' + res.status + ')', 'ok');
+    else toast('✗ ' + res.status + ' ' + (await res.text()).slice(0, 80), 'err');
+  } catch (err) {
+    toast('Network error: ' + err.message, 'err');
+  }
+});
+
+/* ---------- Clipboard ---------- */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Copied to clipboard (clears in 30s)', 'ok');
+    setTimeout(async () => {
+      try {
+        const cur = await navigator.clipboard.readText();
+        if (cur === text) await navigator.clipboard.writeText('');
+      } catch {}
+    }, 30000);
+  } catch {
+    toast('Copy failed', 'err');
+  }
+}
+function copyToken(e) {
+  e.copyCount = (e.copyCount || 0) + 1;
+  e.lastUsedAt = nowISO();
+  renderList(); renderMain();
+  copyText(e.token);
+}
+
+/* ---------- Boot ---------- */
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('masterPwd').focus();
+});
+</script>
+</body>
+</html>
