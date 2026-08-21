@@ -40,24 +40,41 @@ npx serve .
 ```
 
 Then open http://localhost:8000 in your browser.
-Option B: Direct File
-Simply double-click index.html to open it in your browser. (Note: Clipboard auto-clear and some crypto features may be restricted by browser security policies when using the file:// protocol).
-2. Create Your Vault
-Enter a strong Master Password (minimum 6 characters, 12+ recommended).
-Click Create New Vault.
-CRITICAL: Click the 💾 icon in the sidebar to download your api-vault.json file. If you lose this file and forget your password, your data is gone forever.
-🛠️ Usage Guide
-Adding an API Key
-Click + New API in the left sidebar.
-Fill in the details:
-Name: e.g., "OpenAI Production"
-Base URL: e.g., https://api.openai.com/v1
-API Token: Your secret key.
-(Optional) Provider, Model, Tags, and Notes.
-Click 💾 Save.
-Click the 💾 Export icon in the sidebar to update your JSON file.
-Using a Key
-Click on an API entry in the sidebar.
-Click Copy next to the token. It is now in your clipboard (and will auto-clear in 30s).
-Click 📋 Copy cURL to get a ready-to-use curl command for testing.
-Click 🧪 Test to ping the API and verify the key is valid.
+
+- **Option B: Direct File**  
+  Simply double-click `index.html` to open it directly in your browser.  
+  > ⚠️ **Note:** Clipboard auto-clear and some cryptographic features may be restricted by browser security policies when using the `file://` protocol. For full functionality, Option A is recommended.
+
+### 2. Create Your Vault
+1. Enter a strong **Master Password** (minimum 6 characters, 12+ highly recommended).
+2. Click **Create New Vault**.
+3. ⚠️ **CRITICAL:** Click the 💾 icon in the sidebar to download your `api-vault.json` file.  
+   > **If you lose this file and forget your password, your data is gone forever.** There is no recovery mechanism.
+
+---
+
+## 🛠️ Usage Guide
+
+### ➕ Adding an API Key
+1. Click **+ New API** in the left sidebar.
+2. Fill in the required details:
+   - **Name:** e.g., `OpenAI Production`
+   - **Base URL:** e.g., `https://api.openai.com/v1`
+   - **API Token:** Your secret key.
+3. *(Optional)* Fill in additional metadata: **Provider**, **Model**, **Tags**, and **Notes**.
+4. Click 💾 **Save**.
+5. Click the 💾 **Export** icon in the sidebar to update and save your local JSON file.
+
+### 🔑 Using a Key
+1. Click on an API entry in the left sidebar to view its details.
+2. Click **Copy** next to the token.  
+   > 📋 The token is now in your clipboard and will **auto-clear in 30 seconds** for your security.
+3. Click **📋 Copy cURL** to generate a ready-to-use `curl` command for quick testing.
+4. Click **🧪 Test** to ping the API endpoint and verify that the key is valid and active.
+
+---
+
+## ⚠️ Security Best Practices
+- Always back up your `api-vault.json` file in a secure location (e.g., encrypted drive or secure password manager).
+- Never share your Master Password or your `api-vault.json` file.
+- Use the local server method (`localhost`) whenever possible to ensure all browser security features function correctly.
